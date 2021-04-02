@@ -8,8 +8,9 @@
 
 /* version 3.0 -> Tasks Revamp. Em termos de bugs, consegui fazer t10.in  */
 /* version 3.1 -> Defines bonitos, espaços */
+/* version 3.2 -> Mais funções para reduzir número de linhas */
 
-/* Bom Dia */
+
 
 
 
@@ -138,6 +139,37 @@ int belongs(int nr, int arr[MAX_T]) {
     return N_PERTENCE;
 }
 
+
+/*                    Verificações de Erros / Inicializações                  */
+
+/* Verifica se existe algum erro na criação de uma tarefa nova */
+int create_task_check(int dur, char descrip[]) {
+
+    int i;
+
+    /* Verifica o número máximo de tarefas */
+    if (nr_tasks == MAX_T) {
+        printf(ERROR5);
+        return 1;
+    }
+
+    /* Verifico se a descrição é igual a alguma das tarefas existentes */
+    for (i = 0; i < nr_tasks; i++) {
+        if (strcmp(task_list[i].desc, descrip) == 0) {
+            printf(ERROR6);
+            return 1;
+        }
+    }
+
+    /* Verifico se a duração é válida */
+    if (dur <= 0) {
+        printf(ERROR7);
+        return 1;
+    }
+
+    return 0;
+}
+
 /* Verifica se todas as condições para mover uma tarefa se aplicam. */
 int move_task_check(int id, char user[], char activ[]){
 
@@ -183,6 +215,66 @@ int move_task_check(int id, char user[], char activ[]){
     return 0;
 }
 
+int add_activity_check(char activ_desc[]){
+    int i;
+    /* Verifica se o total de atividades foi ultrapassado. */
+    if (nr_activ == MAX_A){
+        printf(ERROR12);
+        return 1;
+    }
+
+    /* Verifica se cada letra da descricao nao e maiuscula, um espaco ou uma
+     * tabulacao. */
+    for (i = 0; i < MAX_N_A-1 && activ_desc[i] != '\0'; i++){
+
+        if ( !((activ_desc[i] >= 'A' && activ_desc[i] <= 'Z') ||
+               (activ_desc[i] >= '0' && activ_desc[i] <= '9') ||
+               activ_desc[i] == ' ' ||
+               activ_desc[i] == '\t') ){
+            printf(ERROR13);
+            return 1;
+        }
+    }
+
+    /* Verifica atividades repetidas. */
+    for (i = 0; i < nr_activ; i++){
+        if ( strcmp(activ_desc, activ_list[i]) == 0) {
+            printf(ERROR14);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int initialize_arrays(){
+
+    int i;
+
+    /* Inicializa a lista de utilizadores. */
+    for (i = 0; i < MAX_U; i++){
+        strcpy(user_list[i], EMPTY_STR);
+    }
+
+    /* Inicializa a lista de atividades. */
+    for (i = 0; i < MAX_A; i++){
+        strcpy(activ_list[i], EMPTY_STR);
+    }
+
+    /* Inicializa as tarefas. */
+    for (i = 0; i < MAX_T; i++){
+        task_list[i] = blank_task;
+        strcpy(task_list[i].desc, EMPTY_STR);
+    }
+
+    /* Altera o nome das 3 atividades pre-definidas */
+    strcpy(activ_list[0], A_START);
+    strcpy(activ_list[1], A_MIDDLE);
+    strcpy(activ_list[2], A_LAST);
+    nr_activ = 3;
+
+    return 0;
+}
+
 /* ---------------------------    Principais   ------------------------------ */
 
 
@@ -190,28 +282,12 @@ int move_task_check(int id, char user[], char activ[]){
 int create_task(int dur, char descrip[]){
 
     task new_task;
-    int i;
 
-    /* Verifica o número máximo de tarefas */
-    if (nr_tasks == MAX_T){
-        printf(ERROR5);
+    /* Verifica se existe algum erro. Nota: Se uma função der erro, retorna
+     * sempre 1. */
+    if (create_task_check(dur, descrip) == 1) {
         return 1;
     }
-
-    /* Verifico se a descrição é igual a alguma das tarefas existentes */
-    for (i = 0; i < nr_tasks; i++){
-        if ( strcmp(task_list[i].desc,descrip) == 0 ){
-            printf(ERROR6);
-            return 1;
-        }
-    }
-
-    /* Verifico se a duração é válida */
-    if (dur <= 0){
-        printf(ERROR7);
-        return 1;
-    }
-
 
     /* Atualiza os parâmetros inteiros */
     new_task.id = nr_tasks + 1;
@@ -501,32 +577,8 @@ int list_activity_tasks(char activ[]) {
 /* Adiciona uma atividade. Referente ao comando "a". */
 int add_activity(char activ_desc[]){
 
-    int i;
-    /* Verifica se o total de atividades foi ultrapassado. */
-    if (nr_activ == MAX_A){
-        printf(ERROR12);
+    if (add_activity_check(activ_desc) == 1){
         return 1;
-    }
-
-    /* Verifica se cada letra da descricao nao e maiuscula, um espaco ou uma
-     * tabulacao. */
-    for (i = 0; i < MAX_N_A-1 && activ_desc[i] != '\0'; i++){
-
-        if ( !((activ_desc[i] >= 'A' && activ_desc[i] <= 'Z') ||
-               (activ_desc[i] >= '0' && activ_desc[i] <= '9') ||
-                activ_desc[i] == ' ' ||
-                activ_desc[i] == '\t') ){
-            printf(ERROR13);
-            return 1;
-        }
-    }
-
-    /* Verifica atividades repetidas. */
-    for (i = 0; i < nr_activ; i++){
-        if ( strcmp(activ_desc, activ_list[i]) == 0) {
-            printf(ERROR14);
-            return 1;
-        }
     }
 
     /* Crio uma nova atividade no id = número de atividades + 1 */
@@ -572,28 +624,7 @@ int main() {
     char c, temp1[MAX_T],temp2[MAX_T], z;
     int num = 0;
 
-    /* Inicializa a lista de utilizadores. */
-    for (i = 0; i < MAX_U; i++){
-        strcpy(user_list[i], EMPTY_STR);
-    }
-
-    /* Inicializa a lista de atividades. */
-    for (i = 0; i < MAX_A; i++){
-        strcpy(activ_list[i], EMPTY_STR);
-    }
-
-    /* Inicializa as tarefas. */
-    for (i = 0; i < MAX_T; i++){
-        task_list[i] = blank_task;
-        strcpy(task_list[i].desc, EMPTY_STR);
-    }
-
-    /* Altera o nome das 3 atividades pre-definidas */
-    strcpy(activ_list[0], A_START);
-    strcpy(activ_list[1], A_MIDDLE);
-    strcpy(activ_list[2], A_LAST);
-    nr_activ = 3;
-
+    initialize_arrays();
 
     while (1){
         switch (c = getchar()) {
@@ -771,8 +802,7 @@ int main() {
         }
         num = cont = i = 0;
     }
-
-    printf("Hello, World!\n");
+    
     return 0;
 }
 
