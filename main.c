@@ -7,22 +7,24 @@
 /* version 2.5 -> implementar mensagem "invalid duration" na new_task */
 
 /* version 3.0 -> Tasks Revamp. Em termos de bugs, consegui fazer t10.in  */
+/* version 3.1 -> Defines bonitos, espaços */
 
 
-/* Tentar otimizar, fazendo nao percorrer tudo mas apenas < nr tasks */
-/* Colocar os prints de erros em constantes */
-/* Escrever uma descricao bonita */
 
-/* File: main.c
+
+
+/* File: proj1.c
  * Author: Pedro Chaparro ist199298
- * Description:
- *
+ * Description: Projeto 1 de IAED: Criação de um programa que simula o método
+ *              kanban. A estrutura geral basea-se na estrutura tarefa, composta
+ *              por vários elementos do método kanban (duração, atividade, ...)
+ *              e um num vetor de tarefas.
+ *              Estas tarefas e atividades serão manipuladas consoante o input
+ *              do utilizador ao interagir com o terminal.
+ *              Foi usada a convenção que uma função retorna 0 quando não
+ *              ocorrem erros e 1 caso contrário.
  *  */
 
-
-/* Segui a convencao que quando uma funcao retorna 1 e mau e 0 e bom
- * Segui a ideia de "o principal" serem as atividades, e dentro delas existirem
- * tarefas. */
 
 /* =============================================================================
  * ===============                  INCLUDES                   =================
@@ -38,10 +40,8 @@
  * =============================================================================
 */
 
-#define OCUPADO -1
-#define VAZIO 0
-
-/* Lista vazia para representar slots de utilizadores / atividades por definir*/
+/* Lista vazia para representar descrições, utilizadores e atividades por
+ * definir*/
 #define EMPTY_STR ""
 
 #define SIM 1
@@ -52,22 +52,44 @@
 
 #define DONE 1
 
-#define MINUS 3
+#define MAX_T 10000 /* Número máximo de tarefas */
+#define MAX_A 10    /* Número máximo de atividades */
+#define MAX_U 50    /* Número máximo de utilizadores */
 
-#define MAX_T 10000 /* Numero maximo de tarefas */
-#define MAX_A 10    /* Numero maximo de atividades */
-#define MAX_U 50    /* Numero maximo de utilizadores */
+#define MAX_N_A 21  /* Número de caracteres máximo do nome de uma atividade */
+#define MAX_D_T 51  /* Número de caracteres máximo da descrição de uma tarefa */
+#define MAX_N_U 21  /* Número de caracteres máximo do nome de um utilizador */
 
-#define MAX_N_A 21  /* Numero de caracteres maximo do nome de uma atividade */
-#define MAX_D_T 51  /* Numero de caracteres maximo da descricao de uma tarefa */
-#define MAX_N_U 21  /* Numero de caracteres maximo do nome de um utilizador */
+/* Erros das diversas funções */
+
+#define ERROR1 "task already started\n"
+#define ERROR2 "no such user\n"
+#define ERROR3 "no such activity\n"
+#define ERROR4 "no such task\n"
+#define ERROR5 "too many tasks\n"
+#define ERROR6 "duplicate description\n"
+#define ERROR7 "invalid duration\n"
+#define ERROR8 "%d: no such task\n"
+#define ERROR9 "invalid time\n"
+#define ERROR10 "too many users\n"
+#define ERROR11 "user already exists\n"
+#define ERROR12 "too many activities\n"
+#define ERROR13 "invalid description\n"
+#define ERROR14 "duplicate activity\n"
+
+/* Atividades pré-definidas */
+#define A_START "TO DO"
+#define A_MIDDLE "IN PROGRESS"
+#define A_LAST "DONE"
+
+
 
 /* =============================================================================
- * ===============                   STRUCTS                   =================
+ * ===============                   STRUCT                    =================
  * =============================================================================
  */
 
-/* Estrutura 'task'. Serve para armazenar toda a informacao relativa a tarefas*/
+/* Estrutura 'task'. Serve para armazenar toda a informação relativa a tarefas*/
 typedef struct {
     int id, dur, inst_init;
     char desc[MAX_D_T];
@@ -77,15 +99,15 @@ typedef struct {
 
 
 /* =============================================================================
- * ===============       CONSTANTES / VARIAVEIS GLOBAIS        =================
+ * ===============       CONSTANTES / VARIÁVEIS GLOBAIS        =================
  * =============================================================================
 */
 
 /* Número de tarefas, atividades e utilizadores atuais. Usados para verificar
- * se o numero máximo de cada elemento é ultrapassado e em outras condições. */
+ * se o número máximo de cada elemento é ultrapassado e em outras condições. */
 int nr_tasks = 0, nr_activ = 0, nr_users = 0;
 
-int time = 0; /* O tempo simulado, iniciado a 0. */
+int time = 0; /* O tempo simulado, íniciado a 0. */
 
 task task_list[MAX_T];           /* Vetor que armazena as tarefas       */
 char activ_list[MAX_A][MAX_N_A]; /* Vetor que armazena as atividades    */
@@ -95,7 +117,7 @@ char user_list[MAX_U][MAX_N_U];  /* Vetor que armazena os utilizadores  */
 const task blank_task = {0};
 
 /* =============================================================================
- * ===============                   FUNCOES                   =================
+ * ===============                   FUNÇÕES                   =================
  * =============================================================================
 */
 
@@ -103,16 +125,7 @@ const task blank_task = {0};
 /* -----------------------------    Auxiliares   ---------------------------- */
 
 
-/* Percorre uma lista de IDs e devolve o primeiro ID não ocupado. A posicao
- * lista e' atualizada com "OCUPADO" quando e' criada uma nova tarefa */
-int find_lowest_id(int id_lst[]) {
-    int i;
-    for (i = 0; id_lst[i] == OCUPADO; i++) {}
-    return i+1;
-}
-
-
-/* Verifica se um numero pertence a um vetor */
+/* Verifica se um número pertence a um vetor */
 int belongs(int nr, int arr[MAX_T]) {
 
     int i = 0;
@@ -125,14 +138,14 @@ int belongs(int nr, int arr[MAX_T]) {
     return N_PERTENCE;
 }
 
-/* Verifica se todas as condicoes para mover uma tarefa se aplicam. */
+/* Verifica se todas as condições para mover uma tarefa se aplicam. */
 int move_task_check(int id, char user[], char activ[]){
 
     int i, encontrou = NAO;
 
     /* Verifica se a atividade a mover e´ "TO DO" */
     if (strcmp(activ, "TO DO") == 0){
-        printf("task already started\n");
+        printf(ERROR1);
         return 1;
     }
 
@@ -143,13 +156,13 @@ int move_task_check(int id, char user[], char activ[]){
         }
     }
     if (encontrou == NAO){
-        printf("no such user\n");
+        printf(ERROR2);
         return 1;
     }
 
     encontrou = NAO;
     /* Verifica se a atividade a mover existe, usando a mesma logica que na
-     * verificacao de utilizadores*/
+     * verificação de utilizadores*/
     for (i = 0; i < nr_activ; i++){
         if (strcmp(activ, activ_list[i]) == 0){
             encontrou = SIM;
@@ -157,13 +170,13 @@ int move_task_check(int id, char user[], char activ[]){
         }
     }
     if (encontrou == NAO){
-        printf("no such activity\n");
+        printf(ERROR3);
         return 1;
     }
 
-    /* Verifica se a task ja' foi criada */
+    /* Verifica se a task já foi criada */
     if (strcmp(task_list[id-1].desc, EMPTY_STR) == 0){
-        printf("no such task\n");
+        printf(ERROR4);
         return 1;
     }
 
@@ -179,43 +192,39 @@ int create_task(int dur, char descrip[]){
     task new_task;
     int i;
 
-    /* Verifica o nr máximo de tarefas */
+    /* Verifica o número máximo de tarefas */
     if (nr_tasks == MAX_T){
-        printf("too many tasks\n");
+        printf(ERROR5);
         return 1;
     }
 
-    /* Verifico se a descricao eh igual a alguma das tarefas existentes */
+    /* Verifico se a descrição é igual a alguma das tarefas existentes */
     for (i = 0; i < nr_tasks; i++){
         if ( strcmp(task_list[i].desc,descrip) == 0 ){
-            printf("duplicate description\n");
+            printf(ERROR6);
             return 1;
         }
     }
 
-    /* Verifico se a duracao eh valida */
+    /* Verifico se a duração é válida */
     if (dur <= 0){
-        printf("invalid duration\n");
+        printf(ERROR7);
         return 1;
     }
 
-    /* __________________________ */
-    /* Criacao de uma nova tarefa */
-    /* -------------------------- */
 
     /* Atualiza os parâmetros inteiros */
     new_task.id = nr_tasks + 1;
     new_task.dur = dur;
     new_task.inst_init = 0;
 
-    /* Guarda a descricao e o nome da atividade TO DO */
+    /* Guarda a descrição e o nome da atividade inicial */
     strcpy(new_task.desc, descrip);
-    strcpy(new_task.ativ, "TO DO");
+    strcpy(new_task.ativ, A_START);
 
-    /*O User fica por inicializar ate a task ser movida */
+    /*O utilizador fica por inicializar até a task ser movida */
 
     task_list[nr_tasks] = new_task;
-
 
     /* Imprimo a mensagem, incremento o numero de tarefas e retorno */
 
@@ -231,11 +240,11 @@ int list_task(int id){
     /* Verifico se o ID é válido e a tarefa do ID correspondente está definida*/
     if ((0 < id && id <= MAX_T) &&
         (strcmp(task_list[id-1].desc, EMPTY_STR) == 0)){
-        printf("%d: no such task\n", id);
+        printf(ERROR8, id);
         return 1;
     }
 
-    /* Como a tarefa foi validada, imprimo a informacao */
+    /* Como a tarefa foi validada, imprimo a informação */
     printf("%d %s #%d %s\n",
            id,
            task_list[id-1].ativ,
@@ -250,8 +259,8 @@ int list_task(int id){
 int list_all_tasks(){
 
     /*  c_task     -> representa a tarefa atual (mais legível);
-     *  menor      -> representa a tarefa com menor descricao, alfabeticamente;
-     *  sorted_ids -> representam os ids ordenados que seram usados para listar
+     *  menor      -> representa a tarefa com menor descrição, alfabeticamente;
+     *  sorted_ids -> representam os ids ordenados que serão usados para listar
      *                todas as tarefas;
      *  all_tasks  -> vetor com todas as tarefas definidas. */
 
@@ -259,13 +268,12 @@ int list_all_tasks(){
     task menor;
     task c_task;
 
-
-    /* Ordenam-se os IDs consoante a ordem das descricoes. */
+    /* Ordenam-se os IDs consoante a ordem das descrições. */
 
     /* Ciclo exterior. Serve para colocar os ids no vetor "sorted_ids". */
     for (i = 0; i < nr_tasks; i++){
 
-        /* Procuro a primeira tarefa que nao pertenca ja aos ids ordenados e
+        /* Procuro a primeira tarefa que não pertenca já aos ids ordenados e
          * escolho-a como menor. */
         for (j = 0; j < nr_tasks; j++){
             if (belongs(task_list[j].id, sorted_ids) == N_PERTENCE){
@@ -274,13 +282,13 @@ int list_all_tasks(){
             }
         }
 
-        /* Tendo uma menor, percorro agora todas as tarefas ate ao fim. */
+        /* Tendo uma menor, percorro agora todas as tarefas até ao fim. */
         for (j = 0; j < nr_tasks; j++){
             /* Para ser mais legivel, "renomeio" a tarefa atual */
             c_task = task_list[j];
 
-            /* Se alguma tiver a descricao menor que a atual menor, substituo
-             * caso nao esta ja nos ids ordenados */
+            /* Se alguma tiver a descrição menor que a atual menor, substituo
+             * caso não esta já nos ids ordenados */
             if ((strcmp(c_task.desc, menor.desc) < 0) &&
                 (belongs(c_task.id, sorted_ids) == N_PERTENCE)){
                 menor = c_task;
@@ -290,7 +298,7 @@ int list_all_tasks(){
         sorted_ids[i] = menor.id;
     }
 
-    /* Tendo o vetor com os ids por ordem de descricao, chamo a funcao de
+    /* Tendo o vetor com os ids por ordem de descrição, chamo a função de
      * listagem individual para cada entrada do vetor */
     for (i = 0; i < nr_tasks; i++){
         list_task(sorted_ids[i]);
@@ -304,7 +312,7 @@ int list_all_tasks(){
 int time_skip(int n) {
 
     if (n < 0) {
-        printf("invalid time\n");
+        printf(ERROR9);
         return 1;
     }
 
@@ -319,25 +327,25 @@ int time_skip(int n) {
 int create_user(char name[]){
     int i;
 
-    /* Verifica se excedeu o numero de utilizadores */
+    /* Verifica se excedeu o número de utilizadores */
     if (nr_users == MAX_U){
-        printf("too many users\n");
+        printf(ERROR10);
         return 1;
     }
 
-    /* Verifica se o utilizador ja existe, percorrendo um ciclo enquanto
-     * existirem utilizadores definidos (ou chegar ao maximo de utilizadores) */
+    /* Verifica se o utilizador já existe, percorrendo um ciclo enquanto
+     * existirem utilizadores definidos (ou chegar ao máximo de utilizadores) */
     for (i = 0; strcmp(user_list[i], EMPTY_STR) != 0 && i < MAX_U; i++){
         if ( strcmp(user_list[i], name) == 0){
-            printf("user already exists\n");
+            printf(ERROR11);
             return 1;
         }
     }
 
-    /* Caso nao exista, preenche o primeiro slot nao ocupado. Reutilizo o indice
+    /* Caso não exista, preenche o primeiro slot não ocupado. Reutilizo o indice
      * "i" do ciclo anterior. */
     strcpy(user_list[i], name);
-    nr_users++; /* Incremento o numero total de utilizadores */
+    nr_users++; /* Incremento o número total de utilizadores */
     return 0;
 }
 
@@ -345,7 +353,7 @@ int create_user(char name[]){
 int list_all_users(){
     int i;
 
-    /* Imprime os elementos do vetor ate encontrar um nao definido */
+    /* Imprime os elementos do vetor até encontrar um não definido */
     for (i = 0; strcmp(user_list[i], EMPTY_STR) != 0 && i < MAX_U; i++) {
         printf("%s\n", user_list[i]);
     }
@@ -355,13 +363,13 @@ int list_all_users(){
 
 
 /* Move uma tarefa entre atividades. Referente ao comando "m".
- * Dividi em duas funcoes, onde a primeira verifica todos os possiveis erros. */
+ * Dividi em duas funcões, onde a primeira verifica todos os possiveis erros. */
 int move_task(int id, char user[], char activ[]) {
 
-    /* destino -> guarda a atividade de destino (DONE ou outra) */
-    int ind, duration, slack, destino = !DONE;
+    /* destino -> guarda a atividade de destino ou outra */
+    int i, duration, slack, destino = !DONE;
 
-    /* Verifica se existe algum erro. Nota: Se uma funcao der erro, retorna
+    /* Verifica se existe algum erro. Nota: Se uma função der erro, retorna
      * sempre 1. */
     if (move_task_check(id, user, activ) == 1) {
         return 1;
@@ -369,27 +377,27 @@ int move_task(int id, char user[], char activ[]) {
 
     /* Procuro o indice da lista de atividades da atividade de destino.
      * Caso o destino seja DONE, guardo numa variável. */
-    for (ind = 0; ind < nr_activ; ind++) {
-        if (strcmp(activ, activ_list[ind]) == 0) {
+    for (i = 0; i < nr_activ; i++) {
+        if (strcmp(activ, activ_list[i]) == 0) {
 
-            if (strcmp(activ, "DONE") == 0) {
+            if (strcmp(activ, A_LAST) == 0) {
                 destino = DONE;
             }
             break;
         }
     }
 
-    /* Verifico se a atividade de origem foi a "TO DO". Se sim, entao
-     * atualizo o instante inicial */
-    if (strcmp(task_list[id - 1].ativ, "TO DO") == 0) {
+    /* Verifico se a atividade de origem foi a inicial. Se sim,atualizo o
+     * instante inicial */
+    if (strcmp(task_list[id - 1].ativ, A_START) == 0) {
         task_list[id - 1].inst_init = time;
     }
 
-    /* Atualizo os parametros "utilizador" e "atividade" da tarefa */
+    /* Atualizo os parâmetros "utilizador" e "atividade" da tarefa */
     strcpy(task_list[id - 1].user, user);
     strcpy(task_list[id - 1].ativ, activ);
 
-    /* No caso do destino ser DONE, processo a impressao de saida */
+    /* No caso do destino ser a atividade final, processo a impressão de saida */
     if (destino == DONE) {
         duration = time - task_list[id - 1].inst_init;
         slack = duration - task_list[id - 1].dur;
@@ -405,9 +413,9 @@ int move_task(int id, char user[], char activ[]) {
 int list_activity_tasks(char activ[]) {
 
     /* menor     -> tarefa com o menor instante de inicio e com a menor
-     *              descricao alfabeticamente.
+     *              descrição alfabeticamente.
      * c_task    -> tarefa atual. (Tornar mais legivel)
-     * blacklist -> vetor que guarda as tarefas ja impressas, de forma a nao
+     * blacklist -> vetor que guarda as tarefas já impressas, de forma a não
      *              existirem repetidas. */
 
     int i, j;
@@ -423,7 +431,7 @@ int list_activity_tasks(char activ[]) {
     }
     /*Se chegou ao fim do ciclo e nao encontrou, entao a atividade nao existe */
     if (i == nr_activ){
-        printf("no such activity\n");
+        printf(ERROR3);
         return 1;
     }
 
@@ -496,7 +504,7 @@ int add_activity(char activ_desc[]){
     int i;
     /* Verifica se o total de atividades foi ultrapassado. */
     if (nr_activ == MAX_A){
-        printf("too many activities\n");
+        printf(ERROR12);
         return 1;
     }
 
@@ -508,7 +516,7 @@ int add_activity(char activ_desc[]){
                (activ_desc[i] >= '0' && activ_desc[i] <= '9') ||
                 activ_desc[i] == ' ' ||
                 activ_desc[i] == '\t') ){
-            printf("invalid description\n");
+            printf(ERROR13);
             return 1;
         }
     }
@@ -516,7 +524,7 @@ int add_activity(char activ_desc[]){
     /* Verifica atividades repetidas. */
     for (i = 0; i < nr_activ; i++){
         if ( strcmp(activ_desc, activ_list[i]) == 0) {
-            printf("duplicate activity\n");
+            printf(ERROR14);
             return 1;
         }
     }
@@ -581,9 +589,9 @@ int main() {
     }
 
     /* Altera o nome das 3 atividades pre-definidas */
-    strcpy(activ_list[0], "TO DO");
-    strcpy(activ_list[1], "IN PROGRESS");
-    strcpy(activ_list[2], "DONE");
+    strcpy(activ_list[0], A_START);
+    strcpy(activ_list[1], A_MIDDLE);
+    strcpy(activ_list[2], A_LAST);
     nr_activ = 3;
 
 
