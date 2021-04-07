@@ -10,8 +10,8 @@
 /* version 3.1 -> Defines bonitos, espaços */
 /* version 3.2 -> Mais funções para reduzir número de linhas */
 
-
-
+/* version 4.0 -> PRÉ Mudar os sorts. Tornar mais eficiente. */
+/* version 4.1 -> Sorts mudados. Fundido em 1 só. Passei a todos os testes até ct005, exceto ct005. */
 
 
 /* File: proj1.c
@@ -114,6 +114,11 @@ task task_list[MAX_T];           /* Vetor que armazena as tarefas       */
 char activ_list[MAX_A][MAX_N_A]; /* Vetor que armazena as atividades    */
 char user_list[MAX_U][MAX_N_U];  /* Vetor que armazena os utilizadores  */
 
+/* Vetor que armazena os ids ordenados alfabeticamente */
+int sorted_ids_a[MAX_T] = {0};
+/*Vetor que armazena os ids ordenados por instante inicial (e alfabeticamente)*/
+int sorted_ids_t[MAX_T] = {0};
+
 /* Tarefa Vazia. Usada para inicializar o vetor de tarefas. */
 const task blank_task = {0};
 
@@ -175,6 +180,12 @@ int move_task_check(int id, char user[], char activ[]){
 
     int i, encontrou = NAO;
 
+    /* Verifica se a task já foi criada */
+    if (strcmp(task_list[id-1].desc, EMPTY_STR) == 0){
+        printf(ERROR4);
+        return 1;
+    }
+
     /* Verifica se a atividade a mover e´ "TO DO" */
     if (strcmp(activ, "TO DO") == 0){
         printf(ERROR1);
@@ -206,11 +217,6 @@ int move_task_check(int id, char user[], char activ[]){
         return 1;
     }
 
-    /* Verifica se a task já foi criada */
-    if (strcmp(task_list[id-1].desc, EMPTY_STR) == 0){
-        printf(ERROR4);
-        return 1;
-    }
 
     return 0;
 }
@@ -274,6 +280,62 @@ int initialize_arrays(){
 
     return 0;
 }
+
+
+int sort_ids(int ids[], int start_time_flag, int total_tasks){
+
+    int i, temp = 0, index = total_tasks - 1;
+    int trocar = SIM;
+    task n_t, c_t;
+
+
+    while (trocar == SIM){
+        trocar = NAO;
+
+        for (i = 0; i < index; i++){
+
+            n_t = task_list[ids[i+1]-1];
+            c_t = task_list[ids[i]-1];
+            /*printf("%d\n next: %d current: %d\n", i, n_t.id, c_t.id);*/
+            if (start_time_flag == SIM){
+
+                if (n_t.inst_init < c_t.inst_init) {
+                    temp = ids[i+1];
+                    ids[i+1] = ids[i];
+                    ids[i] = temp;
+                    trocar = SIM;
+                }
+                else if (n_t.inst_init == c_t.inst_init &&
+                        (strcmp(n_t.desc, c_t.desc) < 0)) {
+                    temp = ids[i+1];
+                    ids[i+1] = ids[i];
+                    ids[i] = temp;
+                    trocar = SIM;
+                }
+            }
+
+            else{
+                if ((strcmp(n_t.desc, c_t.desc) < 0)){
+                    /*printf("Trocou para a frente\n\n");*/
+                    temp = ids[i+1];
+                    ids[i+1] = ids[i];
+                    ids[i] = temp;
+                    trocar = SIM;
+                }
+            }
+
+        }
+
+        index--;
+    }
+
+    return 0;
+
+}
+
+
+
+
 
 /* ---------------------------    Principais   ------------------------------ */
 
@@ -340,11 +402,34 @@ int list_all_tasks(){
      *                todas as tarefas;
      *  all_tasks  -> vetor com todas as tarefas definidas. */
 
-    int i, j, sorted_ids[MAX_T] = {0};
+    /*static int tasks_since = 0;*/
+    int sorted_ids[MAX_T] = {0};
+    int i, j;
     task menor;
     task c_task;
 
-    /* Ordenam-se os IDs consoante a ordem das descrições. */
+    /* Coloco as novas tarefas criadas desde a invocação da função nas posições
+     * correspondentes do vetor 'sorted_ids'.
+     * Para saber quantas novas adicionar (de forma a colmatar criar um ciclo
+     * extra), uso a variável 'tasks_since', incrementada a cada tarefa nova */
+
+    /*for (i = tasks_since; i < nr_tasks; i++)*/
+        /*sorted_ids_a[i] = i;*/
+
+    for (i = 0; i < nr_tasks; i++){
+        sorted_ids[i] = i+1;
+    }
+
+
+
+
+    sort_ids(sorted_ids, NAO, nr_tasks);
+
+    for (i = 0; i < nr_tasks; i++){
+        list_task(sorted_ids[i]);
+    }
+
+    return 0;
 
     /* Ciclo exterior. Serve para colocar os ids no vetor "sorted_ids". */
     for (i = 0; i < nr_tasks; i++){
@@ -373,6 +458,7 @@ int list_all_tasks(){
         /* Chegado ao fim, atualizo os ids_ordenados usando "i" como indice */
         sorted_ids[i] = menor.id;
     }
+
 
     /* Tendo o vetor com os ids por ordem de descrição, chamo a função de
      * listagem individual para cada entrada do vetor */
@@ -494,9 +580,11 @@ int list_activity_tasks(char activ[]) {
      * blacklist -> vetor que guarda as tarefas já impressas, de forma a não
      *              existirem repetidas. */
 
-    int i, j;
+    int i, j = 0;
     task menor = {0}, c_task = {0};
     int blacklist[MAX_T] = {0};
+    int sorted_ids[MAX_T] = {0};
+    task c_t;
 
     /* Verifico se a atividade existe */
     for (i = 0; i < nr_activ; i++){
@@ -510,6 +598,37 @@ int list_activity_tasks(char activ[]) {
         printf(ERROR3);
         return 1;
     }
+
+
+    for (i = 0; i < nr_tasks; i++){
+        if (strcmp(activ, task_list[i].ativ) == 0) {
+            sorted_ids[j] = task_list[i].id;
+            j++;
+        }
+    }
+
+    if (j > 1)
+        sort_ids(sorted_ids, SIM, j);
+
+    if (j == 1){
+        c_t = task_list[sorted_ids[0]-1];
+        printf("%d %d %s\n", c_t.id, c_t.inst_init, c_t.desc);
+
+    }
+    else if (j > 1){
+        for (i = 0; i < j; i++) {
+            c_t = task_list[sorted_ids[i] - 1];
+            printf("%d %d %s\n", c_t.id, c_t.inst_init, c_t.desc);
+        }
+    }
+
+    return 0;
+
+
+
+
+
+
 
 
     /* "i" serve para atualizar as entradas do vetor "blacklist" e controlar o
@@ -802,7 +921,7 @@ int main() {
         }
         num = cont = i = 0;
     }
-    
+
     return 0;
 }
 
