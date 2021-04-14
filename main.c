@@ -13,6 +13,8 @@
 /* version 4.0 -> PRÉ Mudar os sorts. Tornar mais eficiente. */
 /* version 4.1 -> Sorts mudados. Fundido em 1 só. Passei a todos os testes até ct005, exceto ct005. */
 
+/* version 5.1 -> Mooshak season. Apenas tenho o ct004 do Diogo por corrigir. Do mooshak tenho  errados */
+
 
 /* File: proj1.c
  * Author: Pedro Chaparro ist199298
@@ -25,6 +27,19 @@
  *              Foi usada a convenção que uma função retorna 0 quando não
  *              ocorrem erros e 1 caso contrário.
  *  */
+
+
+/* Err34: Mover para a mesma task ;
+ * ErrT51-T54 Minusculas do "a":
+ *
+ *
+ *
+ *
+ *
+ *
+ *  */
+
+
 
 
 /* =============================================================================
@@ -186,11 +201,16 @@ int move_task_check(int id, char user[], char activ[]){
         return 1;
     }
 
+    /* Verifica se a atividade a mover e´ a mesma */
+    if (strcmp(activ, task_list[id-1].ativ) == 0){
+        return 1;
+    }
+
     /* Verifica se a atividade a mover e´ "TO DO" */
     if (strcmp(activ, "TO DO") == 0){
         printf(ERROR1);
         return 1;
-    }
+        }
 
     /* Verifica se o utilizador existe, usando uma variável de estado */
     for (i = 0; i < nr_users; i++){
@@ -223,24 +243,6 @@ int move_task_check(int id, char user[], char activ[]){
 
 int add_activity_check(char activ_desc[]){
     int i;
-    /* Verifica se o total de atividades foi ultrapassado. */
-    if (nr_activ == MAX_A){
-        printf(ERROR12);
-        return 1;
-    }
-
-    /* Verifica se cada letra da descricao nao e maiuscula, um espaco ou uma
-     * tabulacao. */
-    for (i = 0; i < MAX_N_A-1 && activ_desc[i] != '\0'; i++){
-
-        if ( !((activ_desc[i] >= 'A' && activ_desc[i] <= 'Z') ||
-               (activ_desc[i] >= '0' && activ_desc[i] <= '9') ||
-               activ_desc[i] == ' ' ||
-               activ_desc[i] == '\t') ){
-            printf(ERROR13);
-            return 1;
-        }
-    }
 
     /* Verifica atividades repetidas. */
     for (i = 0; i < nr_activ; i++){
@@ -249,6 +251,34 @@ int add_activity_check(char activ_desc[]){
             return 1;
         }
     }
+
+    /* Verifica se cada letra da descricao nao e maiuscula, um espaco ou uma
+     * tabulacao. */
+    for (i = 0; i < MAX_N_A-1 && activ_desc[i] != '\0'; i++){
+
+        if (activ_desc[i] >= 'a' && activ_desc[i] <= 'z' ){
+            printf(ERROR13);
+            return 1;
+        }
+    }
+
+    /*Coise dentro do if /\
+     * !((activ_desc[i] >= 'A' && activ_desc[i] <= 'Z') ||
+               (activ_desc[i] >= '0' && activ_desc[i] <= '9') ||
+               activ_desc[i] == ' ' ||
+               activ_desc[i] == '\t')*/
+
+
+
+    /* Verifica se o total de atividades foi ultrapassado. */
+    if (nr_activ == MAX_A){
+        printf(ERROR12);
+        return 1;
+    }
+
+
+
+
     return 0;
 }
 
@@ -376,11 +406,13 @@ int create_task(int dur, char descrip[]){
 int list_task(int id){
 
     /* Verifico se o ID é válido e a tarefa do ID correspondente está definida*/
-    if ((0 < id && id <= MAX_T) &&
-        (strcmp(task_list[id-1].desc, EMPTY_STR) == 0)){
+    if (!(id > 0 && id <= MAX_T) ||
+    (strcmp(task_list[id-1].desc, EMPTY_STR) == 0)){
         printf(ERROR8, id);
         return 1;
     }
+
+
 
     /* Como a tarefa foi validada, imprimo a informação */
     printf("%d %s #%d %s\n",
@@ -419,9 +451,6 @@ int list_all_tasks(){
     for (i = 0; i < nr_tasks; i++){
         sorted_ids[i] = i+1;
     }
-
-
-
 
     sort_ids(sorted_ids, NAO, nr_tasks);
 
@@ -574,15 +603,7 @@ int move_task(int id, char user[], char activ[]) {
 /* Lista todas as tarefas de uma atividade. Referente ao comando "d". */
 int list_activity_tasks(char activ[]) {
 
-    /* menor     -> tarefa com o menor instante de inicio e com a menor
-     *              descrição alfabeticamente.
-     * c_task    -> tarefa atual. (Tornar mais legivel)
-     * blacklist -> vetor que guarda as tarefas já impressas, de forma a não
-     *              existirem repetidas. */
-
     int i, j = 0;
-    task menor = {0}, c_task = {0};
-    int blacklist[MAX_T] = {0};
     int sorted_ids[MAX_T] = {0};
     task c_t;
 
@@ -623,73 +644,6 @@ int list_activity_tasks(char activ[]) {
     }
 
     return 0;
-
-
-
-
-
-
-
-
-    /* "i" serve para atualizar as entradas do vetor "blacklist" e controlar o
-     * ciclo. */
-    for (i = 0; i < nr_tasks; i++) {
-
-        /* Percorro todas as tarefas cuja atividade é igual à do input, em busca
-         * da 1ª para considerar como menor. */
-        for (j = 0; j < nr_tasks; j++) {
-
-            /* Apenas me interessam as tarefas que estão na atividade de input e
-             * que não estão na blacklist. */
-            if ((strcmp(task_list[j].ativ, activ) == 0) &&
-                 belongs(task_list[j].id, blacklist) == N_PERTENCE) {
-                menor = task_list[j];
-                break;
-            }
-        /* No caso de não ter definido nenhuma menor, então nenhuma tarefa
-         * pertence à atividade. Então, sai da função. */
-        }
-        if (j == nr_tasks){
-            return 0;
-        }
-
-        /* Percorro todas as tarefas novamente, fazendo desta vez comparações
-         * à procura da menor destas, atualizado a variável "menor" sempre que
-         * encontrar uma tarefa que seja menor. */
-        for (j = 0; j < nr_tasks; j++){
-
-            /* Mesma comparação que a anterior */
-            if ((strcmp(task_list[j].ativ, activ) == 0) &&
-                belongs(task_list[j].id, blacklist) == N_PERTENCE) {
-
-                c_task = task_list[j]; /* Para tornar mais legível. */
-
-                /*Verifico se o instante inicial e menor que o da tarefa
-                 * considerada menor. Se for, atualizado a tarefa menor. */
-                if (c_task.inst_init < menor.inst_init) {
-                    menor = c_task;
-                }
-
-                /* A outra possibilidade de mudança acontece se os instantes
-                 * forem iguais. Nesse caso, comparo as descrições. */
-                else if (c_task.inst_init == menor.inst_init) {
-
-                    /* Caso a primeira seja alfabeticamente menor, substituo. */
-                    if (strcmp(c_task.desc, menor.desc) < 0) {
-                        menor = c_task;
-                    }
-                }
-            }
-        }
-
-    /* Antes de acabar a primeira iteração do ciclo exterior, imprimo a
-     * informação da menor tarefa e coloco o seu id na blacklist */
-    printf("%d %d %s\n", menor.id, menor.inst_init, menor.desc);
-    blacklist[i] = menor.id;
-
-    }
-
-    return 0;
 }
 
 
@@ -703,6 +657,13 @@ int add_activity(char activ_desc[]){
     /* Crio uma nova atividade no id = número de atividades + 1 */
 
     strcpy(activ_list[nr_activ], activ_desc);
+
+    /*
+    for (i = 0; activ_desc[i] != '\0'; i++){
+        printf("char: %c, c == |t %d \n", activ_list[nr_activ][i], activ_list[nr_activ][i] == '\t');
+    }
+    printf("\n\n");
+    */
 
     /* Incremento o número de atividades */
     nr_activ++;
@@ -736,12 +697,15 @@ int main() {
      * z, c  -  -  -  -  -  - -> Usadas para ler caracteres, também
      *                           "multi-funcoes";
      * num  -  -  -  -  -  -  -> Acumula um número ao ler do terminal;
+     * sign -  -  -  -  -  -  -> Indica o sinal de um número ao ser lido;
      */
+
 
     int i,j, cont = 0;
     int tempInt1;
     char c, temp1[MAX_T],temp2[MAX_T], z;
     int num = 0;
+    int menos = NAO;
 
     initialize_arrays();
 
@@ -790,12 +754,19 @@ int main() {
                             num = (num * 10) + (z - '0');
                             cont++;
                         }
+
+                        else if (z == '-'){
+                            menos = SIM;
+                        }
                         else if ((z == ' ') && (cont != 0)) {
+                            if (menos == SIM)
+                                num = -num;
                             list_task(num);
                             /* 'num' e 'cont' são reiniciados para obter um novo
                              * número e conseguir ignorar vários espaços
                              * seguidos, respetivamente. */
                             num = cont = 0;
+                            menos = NAO;
 
                         }
                         z = getchar();
@@ -803,6 +774,8 @@ int main() {
                 }
                 /* Lista o último número, se diferente de 0. */
                 if (num != 0){
+                    if (menos == SIM)
+                        num = -num;
                     list_task(num);
                 }
 
@@ -887,9 +860,10 @@ int main() {
 
             /* Adiciona uma atividade / Lista todas */
             case 'a':
-
+                tempInt1 = 0;
                 /* Ignora os espaços */
-                while ( (z = getchar()) == ' ') {}
+                while ( (z = getchar()) == ' ')
+                    tempInt1++;
 
                 /* Se o primeiro caracter != ' ' for '\n', lista todas as
                  * atividades.  */
@@ -902,13 +876,20 @@ int main() {
                 /* Obtém o nome da atividade. */
                 i = 0;
 
+                /* Compensa os espaços anteriores */
+                tempInt1--;
+                while(i < tempInt1){
+                    temp1[i] = ' ';
+                    i++;
+                }
+
+
                 while ((z != '\n') && (i < MAX_N_A-1)){
                     temp1[i] = z;
                     z = getchar();
                     i++;
                 }
                 temp1[i] = '\0';
-
                 add_activity(temp1);
                 break;
 
