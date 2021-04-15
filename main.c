@@ -13,7 +13,7 @@
 /* version 4.0 -> PRÉ Mudar os sorts. Tornar mais eficiente. */
 /* version 4.1 -> Sorts mudados. Fundido em 1 só. Passei a todos os testes até ct005, exceto ct005. */
 
-/* version 5.1 -> Mooshak season. Apenas tenho o ct004 do Diogo por corrigir. Do mooshak tenho  errados */
+/* version 5.1 -> Mooshak season. Apenas tenho o ct004 do Diogo por corrigir. Do mooshak tenho 5 errados */
 
 
 /* File: proj1.c
@@ -210,7 +210,7 @@ int move_task_check(int id, char user[], char activ[]){
     if (strcmp(activ, "TO DO") == 0){
         printf(ERROR1);
         return 1;
-        }
+    }
 
     /* Verifica se o utilizador existe, usando uma variável de estado */
     for (i = 0; i < nr_users; i++){
@@ -311,6 +311,88 @@ int initialize_arrays(){
     return 0;
 }
 
+int aux[MAX_T];
+
+void merge_d(int ids[], int left, int m, int right)
+{
+    int i, j, k;
+    task i_t, j_t;
+    for (i = m+1; i > left; i--)
+        aux[i-1] = ids[i-1];
+
+    for (j = m; j < right; j++)
+        aux[right+m-j] = ids[j+1];
+
+    for (k = left; k <= right; k++) {
+
+        i_t = task_list[aux[i] - 1];
+        j_t = task_list[aux[j] - 1];
+
+        if (j_t.inst_init < i_t.inst_init || i == m + 1)
+            ids[k] = aux[j--];
+        else if ((j_t.inst_init == i_t.inst_init) &&
+                 strcmp(j_t.desc, i_t.desc) < 0)
+            ids[k] = aux[j--];
+        else
+            ids[k] = aux[i++];
+    }
+}
+
+void merge_l(int ids[], int left, int m, int right)
+{
+    int i, j, k;
+    task i_t, j_t;
+    for (i = m+1; i > left; i--)
+        aux[i-1] = ids[i-1];
+
+    for (j = m; j < right; j++)
+        aux[right+m-j] = ids[j+1];
+
+    for (k = left; k <= right; k++) {
+
+        i_t = task_list[aux[i] - 1];
+        j_t = task_list[aux[j] - 1];
+
+        if (strcmp(j_t.desc, i_t.desc) < 0 || i == m + 1)
+            ids[k] = aux[j--];
+
+        else
+            ids[k] = aux[i++];
+    }
+}
+
+
+
+/*
+n_t = task_list[ids[i+1]-1];
+c_t = task_list[ids[i]-1];
+
+if (j_t.inst_init < i_t.inst_init) {
+temp = ids[i+1];
+ids[i+1] = ids[i];
+ids[i] = temp;
+trocar = SIM;
+}
+else if (n_t.inst_init == c_t.inst_init &&
+(strcmp(n_t.desc, c_t.desc) < 0)) {
+temp = ids[i+1];
+ids[i+1] = ids[i];
+ids[i] = temp;
+trocar = SIM;
+}
+*/
+
+
+void mergesort(int ids[], int left, int right, int start_time_flag)
+{
+    int m = (right+left)/2;
+    if (right <= left) return;
+    mergesort(ids, left, m, start_time_flag);
+    mergesort(ids, m+1, right, start_time_flag);
+    start_time_flag ? merge_d(ids, left, m, right) : merge_l(ids, left, m, right);
+}
+
+
 
 int sort_ids(int ids[], int start_time_flag, int total_tasks){
 
@@ -336,7 +418,7 @@ int sort_ids(int ids[], int start_time_flag, int total_tasks){
                     trocar = SIM;
                 }
                 else if (n_t.inst_init == c_t.inst_init &&
-                        (strcmp(n_t.desc, c_t.desc) < 0)) {
+                         (strcmp(n_t.desc, c_t.desc) < 0)) {
                     temp = ids[i+1];
                     ids[i+1] = ids[i];
                     ids[i] = temp;
@@ -407,7 +489,7 @@ int list_task(int id){
 
     /* Verifico se o ID é válido e a tarefa do ID correspondente está definida*/
     if (!(id > 0 && id <= MAX_T) ||
-    (strcmp(task_list[id-1].desc, EMPTY_STR) == 0)){
+        (strcmp(task_list[id-1].desc, EMPTY_STR) == 0)){
         printf(ERROR8, id);
         return 1;
     }
@@ -446,14 +528,15 @@ int list_all_tasks(){
      * extra), uso a variável 'tasks_since', incrementada a cada tarefa nova */
 
     /*for (i = tasks_since; i < nr_tasks; i++)*/
-        /*sorted_ids_a[i] = i;*/
+    /*sorted_ids_a[i] = i;*/
 
     for (i = 0; i < nr_tasks; i++){
         sorted_ids[i] = i+1;
     }
-
+    mergesort(sorted_ids, 0, nr_tasks-1, NAO);
+    /*
     sort_ids(sorted_ids, NAO, nr_tasks);
-
+    */
     for (i = 0; i < nr_tasks; i++){
         list_task(sorted_ids[i]);
     }
@@ -629,7 +712,10 @@ int list_activity_tasks(char activ[]) {
     }
 
     if (j > 1)
+        /*
         sort_ids(sorted_ids, SIM, j);
+        */
+        mergesort(sorted_ids, 0, nr_tasks-1, SIM);
 
     if (j == 1){
         c_t = task_list[sorted_ids[0]-1];
@@ -717,7 +803,7 @@ int main() {
                 return 0;
                 break;
 
-            /* Nova Tarefa */
+                /* Nova Tarefa */
             case 't':
                 /* Guarda a duração e "salta" o espaço. */
                 scanf("%d", &tempInt1);
@@ -733,9 +819,9 @@ int main() {
                 create_task(tempInt1, temp1);
                 break;
 
-            /* Lista Tarefas */
-            /* variavel 'cont' usada para contar o número de listagens. Apenas
-             * importante se for != 0 */
+                /* Lista Tarefas */
+                /* variavel 'cont' usada para contar o número de listagens. Apenas
+                 * importante se for != 0 */
             case 'l':
                 /* Ignora os espaços */
                 while ( (z = getchar()) == ' ') {}
@@ -781,7 +867,7 @@ int main() {
 
                 break;
 
-            /* Avança || Vê Tempo */
+                /* Avança || Vê Tempo */
             case 'n':
 
                 scanf("%d", &num);
@@ -789,7 +875,7 @@ int main() {
 
                 break;
 
-            /* Adicina || Lista Utilizadores */
+                /* Adicina || Lista Utilizadores */
             case 'u':
 
                 /* Ignora os espaços */
@@ -824,7 +910,7 @@ int main() {
                 }
                 break;
 
-            /* Move Tarefa */
+                /* Move Tarefa */
             case 'm':
                 /* Guarda o id e o Utilizador. */
                 scanf("%d%s", &tempInt1, temp1);
@@ -843,7 +929,7 @@ int main() {
                 break;
 
 
-            /* Lista Atividades de Tarefa */
+                /* Lista Atividades de Tarefa */
             case 'd':
                 /* Obtém o nome da atividade. */
                 i = 0;
@@ -858,7 +944,7 @@ int main() {
                 break;
 
 
-            /* Adiciona uma atividade / Lista todas */
+                /* Adiciona uma atividade / Lista todas */
             case 'a':
                 tempInt1 = 0;
                 /* Ignora os espaços */
