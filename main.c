@@ -14,31 +14,22 @@
 /* version 4.1 -> Sorts mudados. Fundido em 1 só. Passei a todos os testes até ct005, exceto ct005. */
 
 /* version 5.1 -> Mooshak season. Apenas tenho o ct004 do Diogo por corrigir. Do mooshak tenho 5 errados */
+/* version 5.2 -> Não mais time error. Tem 7 Wrong Awesers. Vou tentar mudar as tarefas de forma igual às atividades */
 
+/* version 6.0 -> Feito */
+/* version 6.2 -> Final Comments */
 
 /* File: proj1.c
  * Author: Pedro Chaparro ist199298
  * Description: Projeto 1 de IAED: Criação de um programa que simula o método
- *              kanban. A estrutura geral basea-se na estrutura tarefa, composta
+ *              kanban. A idea geral basea-se na estrutura tarefa, composta
  *              por vários elementos do método kanban (duração, atividade, ...)
- *              e um num vetor de tarefas.
+ *              e um vetor de tarefas.
  *              Estas tarefas e atividades serão manipuladas consoante o input
  *              do utilizador ao interagir com o terminal.
  *              Foi usada a convenção que uma função retorna 0 quando não
  *              ocorrem erros e 1 caso contrário.
  *  */
-
-
-/* Err34: Mover para a mesma task ;
- * ErrT51-T54 Minusculas do "a":
- *
- *
- *
- *
- *
- *
- *  */
-
 
 
 
@@ -57,7 +48,7 @@
 */
 
 /* Lista vazia para representar descrições, utilizadores e atividades por
- * definir*/
+ * definir */
 #define EMPTY_STR ""
 
 #define SIM 1
@@ -77,7 +68,6 @@
 #define MAX_N_U 21  /* Número de caracteres máximo do nome de um utilizador */
 
 /* Erros das diversas funções */
-
 #define ERROR1 "task already started\n"
 #define ERROR2 "no such user\n"
 #define ERROR3 "no such activity\n"
@@ -98,14 +88,14 @@
 #define A_MIDDLE "IN PROGRESS"
 #define A_LAST "DONE"
 
-
-
 /* =============================================================================
  * ===============                   STRUCT                    =================
  * =============================================================================
  */
 
-/* Estrutura 'task'. Serve para armazenar toda a informação relativa a tarefas*/
+/* Estrutura 'task'. Serve para armazenar toda a informação relativa a tarefas.
+ * Guarda o identificador (id), a duração, o instante de inicio, a descrição,
+ * o utilizador que tomou conta e a atividade em que a tarefa se encontra. */
 typedef struct {
     int id, dur, inst_init;
     char desc[MAX_D_T];
@@ -120,19 +110,16 @@ typedef struct {
 */
 
 /* Número de tarefas, atividades e utilizadores atuais. Usados para verificar
- * se o número máximo de cada elemento é ultrapassado e em outras condições. */
+ * se o número máximo de cada elemento é ultrapassado e em certos ciclos. */
 int nr_tasks = 0, nr_activ = 0, nr_users = 0;
 
 int time = 0; /* O tempo simulado, íniciado a 0. */
 
-task task_list[MAX_T];           /* Vetor que armazena as tarefas       */
-char activ_list[MAX_A][MAX_N_A]; /* Vetor que armazena as atividades    */
-char user_list[MAX_U][MAX_N_U];  /* Vetor que armazena os utilizadores  */
+task task_list[MAX_T];           /* Vetor que armazena as tarefas;       */
+char activ_list[MAX_A][MAX_N_A]; /* Vetor que armazena as atividades;    */
+char user_list[MAX_U][MAX_N_U];  /* Vetor que armazena os utilizadores;  */
 
-/* Vetor que armazena os ids ordenados alfabeticamente */
-int sorted_ids_a[MAX_T] = {0};
-/*Vetor que armazena os ids ordenados por instante inicial (e alfabeticamente)*/
-int sorted_ids_t[MAX_T] = {0};
+int aux[MAX_T]; /* Vetor auxiliado usado no algoritmo de ordenação */
 
 /* Tarefa Vazia. Usada para inicializar o vetor de tarefas. */
 const task blank_task = {0};
@@ -146,21 +133,11 @@ const task blank_task = {0};
 /* -----------------------------    Auxiliares   ---------------------------- */
 
 
-/* Verifica se um número pertence a um vetor */
-int belongs(int nr, int arr[MAX_T]) {
-
-    int i = 0;
-    while (arr[i] != 0 && i < MAX_T) {
-        if (nr == arr[i]) {
-            return PERTENCE;
-        }
-        i++;
-    }
-    return N_PERTENCE;
-}
-
 
 /*                    Verificações de Erros / Inicializações                  */
+
+/* Estas funções auxiliares devolvem 1 caso tenha sido detetado algum erro.
+ * Esse erro será depois processado na função principal correspondente. */
 
 /* Verifica se existe algum erro na criação de uma tarefa nova */
 int create_task_check(int dur, char descrip[]) {
@@ -173,7 +150,7 @@ int create_task_check(int dur, char descrip[]) {
         return 1;
     }
 
-    /* Verifico se a descrição é igual a alguma das tarefas existentes */
+    /* Verifica se a descrição é igual a alguma das tarefas existentes */
     for (i = 0; i < nr_tasks; i++) {
         if (strcmp(task_list[i].desc, descrip) == 0) {
             printf(ERROR6);
@@ -181,7 +158,7 @@ int create_task_check(int dur, char descrip[]) {
         }
     }
 
-    /* Verifico se a duração é válida */
+    /* Verifica se a duração é válida */
     if (dur <= 0) {
         printf(ERROR7);
         return 1;
@@ -193,6 +170,8 @@ int create_task_check(int dur, char descrip[]) {
 /* Verifica se todas as condições para mover uma tarefa se aplicam. */
 int move_task_check(int id, char user[], char activ[]){
 
+    /* encontrou -> variável de estado que indica se foi encontrado um
+     * utilizador */
     int i, encontrou = NAO;
 
     /* Verifica se a task já foi criada */
@@ -201,12 +180,12 @@ int move_task_check(int id, char user[], char activ[]){
         return 1;
     }
 
-    /* Verifica se a atividade a mover e´ a mesma */
+    /* Verifica se a atividade a mover é a mesma */
     if (strcmp(activ, task_list[id-1].ativ) == 0){
         return 1;
     }
 
-    /* Verifica se a atividade a mover e´ "TO DO" */
+    /* Verifica se a atividade a mover é "TO DO" */
     if (strcmp(activ, "TO DO") == 0){
         printf(ERROR1);
         return 1;
@@ -241,6 +220,7 @@ int move_task_check(int id, char user[], char activ[]){
     return 0;
 }
 
+/* Verifica se é possivel adicionar uma atividade */
 int add_activity_check(char activ_desc[]){
     int i;
 
@@ -252,23 +232,14 @@ int add_activity_check(char activ_desc[]){
         }
     }
 
-    /* Verifica se cada letra da descricao nao e maiuscula, um espaco ou uma
-     * tabulacao. */
+    /* Verifica se alguma letra é minuscula. */
     for (i = 0; i < MAX_N_A-1 && activ_desc[i] != '\0'; i++){
 
-        if (activ_desc[i] >= 'a' && activ_desc[i] <= 'z' ){
+        if (activ_desc[i] >= 'a' && activ_desc[i] <= 'z'){
             printf(ERROR13);
             return 1;
         }
     }
-
-    /*Coise dentro do if /\
-     * !((activ_desc[i] >= 'A' && activ_desc[i] <= 'Z') ||
-               (activ_desc[i] >= '0' && activ_desc[i] <= '9') ||
-               activ_desc[i] == ' ' ||
-               activ_desc[i] == '\t')*/
-
-
 
     /* Verifica se o total de atividades foi ultrapassado. */
     if (nr_activ == MAX_A){
@@ -276,12 +247,151 @@ int add_activity_check(char activ_desc[]){
         return 1;
     }
 
+    return 0;
+}
 
 
+
+/*                             Leituras do Terminal                           */
+
+/* Funções usadas para ler do terminal alguma informação e fazer o seu
+ * processamento. Usadas em conjunto com "switches" localizados na main(). */
+
+/* Lê a descrição de uma tarefa */
+int read_task_desc(char desc[]){
+
+    char z;
+    int i;
+    /* Ignora os espaços */
+    while ( (z = getchar()) == ' ') {}
+
+    /* Guarda a descrição. */
+    i = 0;
+    while (( z != '\n') && (i < MAX_D_T-1)){
+        desc[i] = z;
+        z = getchar();
+        i++;
+    }
+    desc[i] = '\0';
+
+    return 0;
+
+}
+
+
+/* Prótótipo da fução que lista as tarefas */
+int list_task( int num);
+
+/*Lê do terminal uma sequência de números correspondentes a tarefas e lista-as*/
+int read_and_list_tasks(char z){
+
+    int num = 0, menos = 0, cont = 0;
+    /* Acumula os números e faz a listagem após encontrar um
+                 * espaco. */
+    while (z != '\n') {
+        if ('0' <= z && z <= '9') {
+            num = (num * 10) + (z - '0');
+            /* Conta o número de digitos */
+            cont++;
+        }
+        /* Verifica um sinal negativo */
+        else if (z == '-'){
+            menos = SIM;
+        }
+            /* Se existir um espaço e tenha havido pelo menos um
+             * dígito */
+        else if ((z == ' ') && (cont != 0)) {
+            if (menos == SIM)
+                num = -num;
+            list_task(num);
+
+            /* As variáveis são reinicializadas */
+            num = cont = 0;
+            menos = NAO;
+
+        }
+        z = getchar();
+    }
+
+    /* Lista o último número, se diferente de 0. */
+    if (num != 0){
+        if (menos == SIM)
+            num = -num;
+        list_task(num);
+    }
 
     return 0;
 }
 
+/* Prótótipo da fução que cria um utilizador */
+int create_user(char name[]);
+
+/* Lê do terminal um nome e cria um utilizador com esse nome */
+int read_and_create_user(char z){
+
+    /* O contador serve para contar o número de espaços.
+     * Se existir algum, não é criado utilizador */
+    int i = 0, cont = 0;
+    char user[MAX_N_U];
+
+    while ((z != '\n') && (z != ' ') && (i < MAX_N_U-1)){
+        user[i] = z;
+        i++;
+        z = getchar();
+    }
+
+    if ( z == ' '){
+        cont++;
+    }
+
+    user[i] = '\0';
+    /* Apenas é criado um utilizador caso não existam espaços em branco */
+    if (cont == 0) {
+        create_user(user);
+    }
+    return 0;
+}
+
+/* Protótipo da função que adiciona atividades */
+int add_activity(char activ[]);
+
+/* Lê uma atividade e adiciona-a */
+int read_and_add_activ(char z){
+
+    int i = 0;
+    char activ[MAX_N_A];
+
+    while ((z != '\n') && (i < MAX_N_A-1)){
+        activ[i] = z;
+        z = getchar();
+        i++;
+    }
+    activ[i] = '\0';
+    add_activity(activ);
+
+    return 0;
+
+}
+
+/* Lê o nome de uma atividade */
+int read_activity(char activ[]){
+
+    char z;
+    int i = 0;
+
+    getchar();
+    while (( (z = getchar()) != '\n') && (i < MAX_N_A-1)){
+        activ[i] = z;
+        i++;
+    }
+    activ[i] = '\0';
+
+    return 0;
+}
+
+/*                                     misc                                   */
+
+/*Inicializa todos os vetores */
 int initialize_arrays(){
 
     int i;
@@ -311,18 +421,40 @@ int initialize_arrays(){
     return 0;
 }
 
-int aux[MAX_T];
+/*Função merge na ordenação por descrição */
+void merge_l(int ids[], int left, int m, int right);
+/*Função merge na ordenação por instante inicial */
+void merge_d(int ids[], int left, int m, int right);
 
-void merge_d(int ids[], int left, int m, int right)
-{
+/* Função de ordenação mergesort.
+ * Invoca diferentes merges dependendo se o vetor é ordenado por instante
+ * inicial ou não. Para isso, é usada uma flag. */
+void mergesort(int ids[], int left, int right, int start_time_flag){
+    int m = (right+left)/2;
+
+    if (right <= left) return;
+
+    mergesort(ids, left, m, start_time_flag);
+    mergesort(ids, m+1, right, start_time_flag);
+
+    /* Verifica se a ordenação é por instante inicial ou descrição */
+    start_time_flag ? merge_d(ids, left,m, right) : merge_l(ids, left,m, right);
+}
+
+/* Implementação do merge por instante inicial. Referente ao comando "d" */
+void merge_d(int ids[], int left, int m, int right){
+
     int i, j, k;
+    /* Tarefas atuais de cada iterador. Para tornar mais legível. */
     task i_t, j_t;
+
+    /* Inicializa os vetores */
     for (i = m+1; i > left; i--)
         aux[i-1] = ids[i-1];
-
     for (j = m; j < right; j++)
         aux[right+m-j] = ids[j+1];
 
+    /* Faz as comparações necessárias e atualiza o vetor principal */
     for (k = left; k <= right; k++) {
 
         i_t = task_list[aux[i] - 1];
@@ -338,13 +470,13 @@ void merge_d(int ids[], int left, int m, int right)
     }
 }
 
-void merge_l(int ids[], int left, int m, int right)
-{
+/* Implementação do merge por descrição. Referente ao comando "l" */
+void merge_l(int ids[], int left, int m, int right){
     int i, j, k;
     task i_t, j_t;
+
     for (i = m+1; i > left; i--)
         aux[i-1] = ids[i-1];
-
     for (j = m; j < right; j++)
         aux[right+m-j] = ids[j+1];
 
@@ -362,93 +494,6 @@ void merge_l(int ids[], int left, int m, int right)
 }
 
 
-
-/*
-n_t = task_list[ids[i+1]-1];
-c_t = task_list[ids[i]-1];
-
-if (j_t.inst_init < i_t.inst_init) {
-temp = ids[i+1];
-ids[i+1] = ids[i];
-ids[i] = temp;
-trocar = SIM;
-}
-else if (n_t.inst_init == c_t.inst_init &&
-(strcmp(n_t.desc, c_t.desc) < 0)) {
-temp = ids[i+1];
-ids[i+1] = ids[i];
-ids[i] = temp;
-trocar = SIM;
-}
-*/
-
-
-void mergesort(int ids[], int left, int right, int start_time_flag)
-{
-    int m = (right+left)/2;
-    if (right <= left) return;
-    mergesort(ids, left, m, start_time_flag);
-    mergesort(ids, m+1, right, start_time_flag);
-    start_time_flag ? merge_d(ids, left, m, right) : merge_l(ids, left, m, right);
-}
-
-
-
-int sort_ids(int ids[], int start_time_flag, int total_tasks){
-
-    int i, temp = 0, index = total_tasks - 1;
-    int trocar = SIM;
-    task n_t, c_t;
-
-
-    while (trocar == SIM){
-        trocar = NAO;
-
-        for (i = 0; i < index; i++){
-
-            n_t = task_list[ids[i+1]-1];
-            c_t = task_list[ids[i]-1];
-            /*printf("%d\n next: %d current: %d\n", i, n_t.id, c_t.id);*/
-            if (start_time_flag == SIM){
-
-                if (n_t.inst_init < c_t.inst_init) {
-                    temp = ids[i+1];
-                    ids[i+1] = ids[i];
-                    ids[i] = temp;
-                    trocar = SIM;
-                }
-                else if (n_t.inst_init == c_t.inst_init &&
-                         (strcmp(n_t.desc, c_t.desc) < 0)) {
-                    temp = ids[i+1];
-                    ids[i+1] = ids[i];
-                    ids[i] = temp;
-                    trocar = SIM;
-                }
-            }
-
-            else{
-                if ((strcmp(n_t.desc, c_t.desc) < 0)){
-                    /*printf("Trocou para a frente\n\n");*/
-                    temp = ids[i+1];
-                    ids[i+1] = ids[i];
-                    ids[i] = temp;
-                    trocar = SIM;
-                }
-            }
-
-        }
-
-        index--;
-    }
-
-    return 0;
-
-}
-
-
-
-
-
 /* ---------------------------    Principais   ------------------------------ */
 
 
@@ -457,8 +502,8 @@ int create_task(int dur, char descrip[]){
 
     task new_task;
 
-    /* Verifica se existe algum erro. Nota: Se uma função der erro, retorna
-     * sempre 1. */
+    /* Verifica se existe algum erro.
+     * Nota: Se uma função der erro, retorna sempre 1. */
     if (create_task_check(dur, descrip) == 1) {
         return 1;
     }
@@ -476,7 +521,7 @@ int create_task(int dur, char descrip[]){
 
     task_list[nr_tasks] = new_task;
 
-    /* Imprimo a mensagem, incremento o numero de tarefas e retorno */
+    /* Imprimo a mensagem, incremento o número de tarefas e retorno */
 
     nr_tasks++;
     printf("task %d\n", new_task.id);
@@ -487,14 +532,12 @@ int create_task(int dur, char descrip[]){
 /* Lista a tarefa com o id correspondente. Referente ao comando "l". */
 int list_task(int id){
 
-    /* Verifico se o ID é válido e a tarefa do ID correspondente está definida*/
+    /* Verifico se o id é válido e a tarefa do id correspondente está definida*/
     if (!(id > 0 && id <= MAX_T) ||
         (strcmp(task_list[id-1].desc, EMPTY_STR) == 0)){
         printf(ERROR8, id);
         return 1;
     }
-
-
 
     /* Como a tarefa foi validada, imprimo a informação */
     printf("%d %s #%d %s\n",
@@ -510,86 +553,42 @@ int list_task(int id){
 /* Lista todas as tarefas. Referente ao comando "l", sem parâmetros. */
 int list_all_tasks(){
 
-    /*  c_task     -> representa a tarefa atual (mais legível);
-     *  menor      -> representa a tarefa com menor descrição, alfabeticamente;
-     *  sorted_ids -> representam os ids ordenados que serão usados para listar
+    /*  sorted_ids -> representam os ids ordenados que serão usados para listar
      *                todas as tarefas;
-     *  all_tasks  -> vetor com todas as tarefas definidas. */
+     */
 
-    /*static int tasks_since = 0;*/
     int sorted_ids[MAX_T] = {0};
-    int i, j;
-    task menor;
-    task c_task;
+    int i;
 
-    /* Coloco as novas tarefas criadas desde a invocação da função nas posições
-     * correspondentes do vetor 'sorted_ids'.
-     * Para saber quantas novas adicionar (de forma a colmatar criar um ciclo
-     * extra), uso a variável 'tasks_since', incrementada a cada tarefa nova */
-
-    /*for (i = tasks_since; i < nr_tasks; i++)*/
-    /*sorted_ids_a[i] = i;*/
-
+    /* Coloca todos os ids definidos num vetor */
     for (i = 0; i < nr_tasks; i++){
         sorted_ids[i] = i+1;
     }
+    /* Ordena o vetor consoante a ordem alfabética.
+     * Foi usada a flag NAO para indicar que o merge não será feito por
+     * instante inicial. */
     mergesort(sorted_ids, 0, nr_tasks-1, NAO);
-    /*
-    sort_ids(sorted_ids, NAO, nr_tasks);
-    */
+
+    /* Lista todos os vetores, por ordem */
     for (i = 0; i < nr_tasks; i++){
         list_task(sorted_ids[i]);
     }
 
     return 0;
 
-    /* Ciclo exterior. Serve para colocar os ids no vetor "sorted_ids". */
-    for (i = 0; i < nr_tasks; i++){
-
-        /* Procuro a primeira tarefa que não pertenca já aos ids ordenados e
-         * escolho-a como menor. */
-        for (j = 0; j < nr_tasks; j++){
-            if (belongs(task_list[j].id, sorted_ids) == N_PERTENCE){
-                menor = task_list[j];
-                break;
-            }
-        }
-
-        /* Tendo uma menor, percorro agora todas as tarefas até ao fim. */
-        for (j = 0; j < nr_tasks; j++){
-            /* Para ser mais legivel, "renomeio" a tarefa atual */
-            c_task = task_list[j];
-
-            /* Se alguma tiver a descrição menor que a atual menor, substituo
-             * caso não esta já nos ids ordenados */
-            if ((strcmp(c_task.desc, menor.desc) < 0) &&
-                (belongs(c_task.id, sorted_ids) == N_PERTENCE)){
-                menor = c_task;
-            }
-        }
-        /* Chegado ao fim, atualizo os ids_ordenados usando "i" como indice */
-        sorted_ids[i] = menor.id;
-    }
-
-
-    /* Tendo o vetor com os ids por ordem de descrição, chamo a função de
-     * listagem individual para cada entrada do vetor */
-    for (i = 0; i < nr_tasks; i++){
-        list_task(sorted_ids[i]);
-    }
-
-    return 0;
 }
 
 
 /* Atualiza o tempo. Referente ao comando "n". */
 int time_skip(int n) {
 
+    /* Caso o tempo seja inválido */
     if (n < 0) {
         printf(ERROR9);
         return 1;
     }
 
+    /* Incrementa a variável global */
     time += n;
     printf("%d\n", time);
     return 0;
@@ -616,10 +615,10 @@ int create_user(char name[]){
         }
     }
 
-    /* Caso não exista, preenche o primeiro slot não ocupado. Reutilizo o indice
-     * "i" do ciclo anterior. */
+    /* Caso não exista, preenche o primeiro slot não ocupado. O indice "i" do
+     * ciclo anterior é reutilizado. */
     strcpy(user_list[i], name);
-    nr_users++; /* Incremento o número total de utilizadores */
+    nr_users++; /* O número total de utilizadores é incrementado */
     return 0;
 }
 
@@ -636,21 +635,20 @@ int list_all_users(){
 }
 
 
-/* Move uma tarefa entre atividades. Referente ao comando "m".
- * Dividi em duas funcões, onde a primeira verifica todos os possiveis erros. */
+/* Move uma tarefa entre atividades. Referente ao comando "m". */
 int move_task(int id, char user[], char activ[]) {
 
-    /* destino -> guarda a atividade de destino ou outra */
+    /* destino -> verifica se a atividade de destino é DONE */
     int i, duration, slack, destino = !DONE;
 
-    /* Verifica se existe algum erro. Nota: Se uma função der erro, retorna
-     * sempre 1. */
+    /* Verifica se existe algum erro.
+     * Nota: Se uma função der erro, retorna sempre 1. */
     if (move_task_check(id, user, activ) == 1) {
         return 1;
     }
 
-    /* Procuro o indice da lista de atividades da atividade de destino.
-     * Caso o destino seja DONE, guardo numa variável. */
+    /* Procura o indice da lista de atividades da atividade de destino.
+     * Caso o destino seja DONE, é guardado numa variável. */
     for (i = 0; i < nr_activ; i++) {
         if (strcmp(activ, activ_list[i]) == 0) {
 
@@ -661,17 +659,17 @@ int move_task(int id, char user[], char activ[]) {
         }
     }
 
-    /* Verifico se a atividade de origem foi a inicial. Se sim,atualizo o
+    /* Verifica se a atividade de origem foi a inicial. Se sim, atualiza o
      * instante inicial */
     if (strcmp(task_list[id - 1].ativ, A_START) == 0) {
         task_list[id - 1].inst_init = time;
     }
 
-    /* Atualizo os parâmetros "utilizador" e "atividade" da tarefa */
+    /* Atualiza os parâmetros "utilizador" e "atividade" da tarefa */
     strcpy(task_list[id - 1].user, user);
     strcpy(task_list[id - 1].ativ, activ);
 
-    /* No caso do destino ser a atividade final, processo a impressão de saida */
+    /* No caso do destino ser a atividade final, processa a impressão de saida*/
     if (destino == DONE) {
         duration = time - task_list[id - 1].inst_init;
         slack = duration - task_list[id - 1].dur;
@@ -686,24 +684,27 @@ int move_task(int id, char user[], char activ[]) {
 /* Lista todas as tarefas de uma atividade. Referente ao comando "d". */
 int list_activity_tasks(char activ[]) {
 
+    /*  sorted_ids -> representa os ids das tarefas ordenados que serão usados
+     * para listar todas as tarefas; */
     int i, j = 0;
     int sorted_ids[MAX_T] = {0};
     task c_t;
 
-    /* Verifico se a atividade existe */
+    /* Verifica se a atividade existe */
     for (i = 0; i < nr_activ; i++){
         /* Se encontrar alguma atividade com o nome do input, para o ciclo */
         if (strcmp(activ, activ_list[i]) == 0){
             break;
         }
     }
-    /*Se chegou ao fim do ciclo e nao encontrou, entao a atividade nao existe */
+    /*Se chegou ao fim do ciclo e não encontrou, então a atividade não existe */
     if (i == nr_activ){
         printf(ERROR3);
         return 1;
     }
 
-
+    /* Percorre todas as tarefas e guarda os ids das pertencentes à atividade no
+     * vetor */
     for (i = 0; i < nr_tasks; i++){
         if (strcmp(activ, task_list[i].ativ) == 0) {
             sorted_ids[j] = task_list[i].id;
@@ -711,18 +712,12 @@ int list_activity_tasks(char activ[]) {
         }
     }
 
+    /* Caso o vetor tenha mais que um elemento, ordena-o */
     if (j > 1)
-        /*
-        sort_ids(sorted_ids, SIM, j);
-        */
-        mergesort(sorted_ids, 0, nr_tasks-1, SIM);
+        mergesort(sorted_ids, 0, j-1, SIM);
 
-    if (j == 1){
-        c_t = task_list[sorted_ids[0]-1];
-        printf("%d %d %s\n", c_t.id, c_t.inst_init, c_t.desc);
-
-    }
-    else if (j > 1){
+    /* Imprime todas as tarefas, ordenadas */
+    if (j >= 1){
         for (i = 0; i < j; i++) {
             c_t = task_list[sorted_ids[i] - 1];
             printf("%d %d %s\n", c_t.id, c_t.inst_init, c_t.desc);
@@ -736,23 +731,17 @@ int list_activity_tasks(char activ[]) {
 /* Adiciona uma atividade. Referente ao comando "a". */
 int add_activity(char activ_desc[]){
 
+    /* Verifica se é possível adicionar a atividade */
     if (add_activity_check(activ_desc) == 1){
         return 1;
     }
 
-    /* Crio uma nova atividade no id = número de atividades + 1 */
-
+    /* Cria uma nova atividade no id = número de atividades + 1 */
     strcpy(activ_list[nr_activ], activ_desc);
 
-    /*
-    for (i = 0; activ_desc[i] != '\0'; i++){
-        printf("char: %c, c == |t %d \n", activ_list[nr_activ][i], activ_list[nr_activ][i] == '\t');
-    }
-    printf("\n\n");
-    */
-
-    /* Incremento o número de atividades */
+    /* Incrementa o número de atividades */
     nr_activ++;
+
     return 0;
 }
 
@@ -777,138 +766,69 @@ int list_all_activities(){
 
 int main() {
 
-    /* id  -  -  -  -  -  -   -> Usada para definir um vetor com todos os ids.
-     * temp1, temp2, tempInt1 -> Variáveis temporárias "multi-funções" que são
-     *                           usadas em vários casos do Switch;
-     * z, c  -  -  -  -  -  - -> Usadas para ler caracteres, também
-     *                           "multi-funcoes";
-     * num  -  -  -  -  -  -  -> Acumula um número ao ler do terminal;
-     * sign -  -  -  -  -  -  -> Indica o sinal de um número ao ser lido;
+    /* temp1,temp2, tempInt1 -> Variáveis temporárias usadas em multiplos casos;
+     * z, c  -  -  -  -  - - -> Usadas para ler caracteres;
+     * num  -  -  -  -  -  - -> Acumula um número ao ler do terminal;
+     * menos -  -  -  -  - - -> Indica o sinal de um número ao ser lido;
      */
 
-
-    int i,j, cont = 0;
+    int i;
     int tempInt1;
     char c, temp1[MAX_T],temp2[MAX_T], z;
     int num = 0;
-    int menos = NAO;
 
+    /* Inicializa todos os vetores */
     initialize_arrays();
 
+    /* Processamento do input do utilizador */
     while (1){
         switch (c = getchar()) {
 
-            /* Acaba o Programa */
+                /* Termina o Programa */
             case 'q':
                 return 0;
                 break;
 
-                /* Nova Tarefa */
-            case 't':
-                /* Guarda a duração e "salta" o espaço. */
-                scanf("%d", &tempInt1);
-                getchar();
 
-                /* Guarda a descrição. */
-                i = 0;
-                while (( (z = getchar()) != '\n') && (i < MAX_D_T-1)){
-                    temp1[i] = z;
-                    i++;
-                }
-                temp1[i] = '\0';
+                /* Cria uma Nova Tarefa */
+            case 't':
+                /* Guarda a duração e lê a descrição. */
+                scanf("%d", &tempInt1);
+                read_task_desc(temp1);
                 create_task(tempInt1, temp1);
                 break;
 
+
                 /* Lista Tarefas */
-                /* variavel 'cont' usada para contar o número de listagens. Apenas
-                 * importante se for != 0 */
             case 'l':
                 /* Ignora os espaços */
                 while ( (z = getchar()) == ' ') {}
 
-                /* Se o primeiro caracter != ' ' for '\n', lista todas as
+                /* Se o primeiro caracter não vazio for '\n', lista todas as
                  * tarefas  */
-                if (z == '\n'){
-                    list_all_tasks();
-                    break;
-                }
-                else {
-                    /* Vai acumulando os numeros e fazendo a listagem após
-                     * encontrar um espaco. */
-                    while (z != '\n') {
-                        if ('0' <= z && z <= '9') {
-                            num = (num * 10) + (z - '0');
-                            cont++;
-                        }
-
-                        else if (z == '-'){
-                            menos = SIM;
-                        }
-                        else if ((z == ' ') && (cont != 0)) {
-                            if (menos == SIM)
-                                num = -num;
-                            list_task(num);
-                            /* 'num' e 'cont' são reiniciados para obter um novo
-                             * número e conseguir ignorar vários espaços
-                             * seguidos, respetivamente. */
-                            num = cont = 0;
-                            menos = NAO;
-
-                        }
-                        z = getchar();
-                    }
-                }
-                /* Lista o último número, se diferente de 0. */
-                if (num != 0){
-                    if (menos == SIM)
-                        num = -num;
-                    list_task(num);
-                }
-
+                z == '\n' ? list_all_tasks() : read_and_list_tasks(z);
                 break;
+
 
                 /* Avança || Vê Tempo */
             case 'n':
 
                 scanf("%d", &num);
                 time_skip(num);
-
                 break;
 
-                /* Adicina || Lista Utilizadores */
-            case 'u':
 
+                /* Adicina ou Lista Utilizadores */
+            case 'u':
                 /* Ignora os espaços */
                 while ( (z = getchar()) == ' ') {}
 
-                /* Se o primeiro caracter != ' ' for '\n', lista todos os
+                /* Se o primeiro caracter não vazio for '\n', lista todos os
                  * utilizadores.  */
-                if (z == '\n'){
-                    list_all_users();
-                    break;
-                }
+                z == '\n' ? list_all_users() : read_and_create_user(z);
 
-                /* O contador neste contexto conta o número de espaços. Caso
-                 * tenha havido algum espaço, não é criado utilizador. */
-                i = cont = 0;
-
-                while ((z != '\n') && (z != ' ') && (i < MAX_N_U-1)){
-                    temp1[i] = z;
-                    i++;
-                    z = getchar();
-                }
-
-                if ( z == ' '){
-                    cont++;
-                }
-
-                temp1[i] = '\0';
-                /* Apenas é criado um utilizador caso não tenha aparecido um
-                 * espaço em branco */
-                if (cont == 0) {
-                    create_user(temp1);
-                }
                 break;
+
 
                 /* Move Tarefa */
             case 'm':
@@ -916,13 +836,7 @@ int main() {
                 scanf("%d%s", &tempInt1, temp1);
 
                 /* Obtem o nome da atividade de destino. */
-                i = 0;
-                getchar();
-                while (( (z = getchar()) != '\n') && (i < MAX_N_A-1)){
-                    temp2[i] = z;
-                    i++;
-                }
-                temp2[i] = '\0';
+                read_activity(temp2);
 
                 /* Chama a função */
                 move_task(tempInt1, temp1, temp2);
@@ -932,13 +846,7 @@ int main() {
                 /* Lista Atividades de Tarefa */
             case 'd':
                 /* Obtém o nome da atividade. */
-                i = 0;
-                getchar();
-                while (( (z = getchar()) != '\n') && (i < MAX_N_A-1)){
-                    temp1[i] = z;
-                    i++;
-                }
-                temp1[i] = '\0';
+                read_activity(temp1);
 
                 list_activity_tasks(temp1);
                 break;
@@ -953,42 +861,21 @@ int main() {
 
                 /* Se o primeiro caracter != ' ' for '\n', lista todas as
                  * atividades.  */
-                if (z == '\n'){
-                    list_all_activities();
-                    break;
-                }
+                z == '\n' ? list_all_activities() :  read_and_add_activ(z);
 
-
-                /* Obtém o nome da atividade. */
-                i = 0;
-
-                /* Compensa os espaços anteriores */
-                tempInt1--;
-                while(i < tempInt1){
-                    temp1[i] = ' ';
-                    i++;
-                }
-
-
-                while ((z != '\n') && (i < MAX_N_A-1)){
-                    temp1[i] = z;
-                    z = getchar();
-                    i++;
-                }
-                temp1[i] = '\0';
-                add_activity(temp1);
                 break;
 
         }
 
-        /* Dá reset a todas as variáveis utilizadas */
-        for (j = 0; j <= i; j++){
-            temp1[j] = ' ';
-            temp2[j] = ' ';
+        /* É feito reset a todas as variáveis utilizadas */
+        for (i = 0; i < MAX_T; i++){
+            temp1[i] = ' ';
+            temp2[i] = ' ';
         }
-        num = cont = i = 0;
+        num = 0;
     }
 
+    /* Done! :D */
     return 0;
 }
 
